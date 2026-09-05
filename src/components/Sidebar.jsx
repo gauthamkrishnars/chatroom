@@ -3,29 +3,11 @@ import {
   Hash,
   Plus,
   Search,
-  MessageSquare,
-  Code,
-  Palette,
-  Sparkles,
-  Flame,
-  Coffee,
-  Terminal,
-  Compass,
   X,
-  Layers,
+  LogOut,
 } from 'lucide-react'
-
-const ICON_MAP = {
-  MessageSquare,
-  Code,
-  Palette,
-  Sparkles,
-  Flame,
-  Coffee,
-  Terminal,
-  Compass,
-  Hash,
-}
+import { useAuth } from '../context/useAuth'
+import { getAvatarGradient, getInitials } from '../utils/helpers'
 
 export default function Sidebar({
   rooms = [],
@@ -36,6 +18,7 @@ export default function Sidebar({
   onClose,
   roomsLoading,
 }) {
+  const { user, signOutUser } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredRooms = useMemo(() => {
@@ -44,7 +27,6 @@ export default function Sidebar({
     return rooms.filter(
       (r) =>
         r.name?.toLowerCase().includes(q) ||
-        r.topic?.toLowerCase().includes(q) ||
         r.description?.toLowerCase().includes(q)
     )
   }, [rooms, searchQuery])
@@ -54,99 +36,76 @@ export default function Sidebar({
       {/* Mobile Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs lg:hidden transition-opacity"
+          className="fixed inset-0 z-40 bg-slate-900/30 lg:hidden transition-opacity"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
 
-      {/* Sidebar Container */}
+      {/* Sidebar */}
       <aside
-        className={`fixed top-16 bottom-0 left-0 z-40 flex w-72 flex-col border-r border-slate-200 bg-slate-50 transition-transform duration-200 ease-in-out lg:static lg:w-72 xl:w-80 lg:translate-x-0 ${
-          isOpen ? 'translate-x-0 shadow-xl shadow-slate-300/40' : '-translate-x-full'
+        className={`fixed top-14 bottom-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-slate-50 transition-transform duration-200 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+          isOpen ? 'translate-x-0 shadow-lg shadow-slate-300/40' : '-translate-x-full'
         }`}
       >
-        {/* Header: Section Title & Create Room Button */}
-        <div className="flex items-center justify-between border-b border-slate-200 p-4 bg-white/50">
+        {/* Workspace Brand Header */}
+        <div className="flex h-14 items-center justify-between border-b border-slate-200 px-4 bg-white">
           <div className="flex items-center gap-2">
-            <Layers className="h-4 w-4 text-slate-500" />
-            <h2 className="text-xs font-bold tracking-wider uppercase text-slate-700">
-              Channels ({rooms.length})
-            </h2>
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="text-xs font-bold text-slate-900 tracking-tight">Team Workspace</span>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={onOpenCreateRoom}
-              className="flex h-7 items-center gap-1 rounded-md bg-slate-900 px-2.5 text-xs font-medium text-white shadow-xs transition hover:bg-slate-800 active:scale-95"
-              title="Create Room"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>New</span>
-            </button>
-
-            {/* Mobile close button inside drawer */}
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 lg:hidden"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:text-slate-700 lg:hidden"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
-        {/* Search Input */}
-        <div className="p-3 border-b border-slate-200 bg-white/30">
+        {/* Channel Search */}
+        <div className="p-3 border-b border-slate-200 bg-white/40">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search channels..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 shadow-2xs transition focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              placeholder="Find a channel..."
+              className="w-full rounded-md border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:outline-none"
             />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Rooms List */}
-        <div className="flex-1 overflow-y-auto p-2.5 space-y-1">
+        {/* Channels Header */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <span>Channels</span>
+          <button
+            type="button"
+            onClick={onOpenCreateRoom}
+            className="rounded p-1 hover:bg-slate-200 hover:text-slate-800 transition"
+            title="Create Channel"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* Channels List */}
+        <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
           {roomsLoading ? (
-            <div className="space-y-2 p-2">
-              {[1, 2, 3, 4].map((n) => (
-                <div
-                  key={n}
-                  className="h-12 w-full rounded-lg bg-slate-200/60 animate-pulse border border-slate-200"
-                />
+            <div className="space-y-1 p-2">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="h-7 rounded bg-slate-200/60 animate-pulse" />
               ))}
             </div>
           ) : filteredRooms.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center bg-white">
-              <Compass className="mx-auto h-6 w-6 text-slate-400" />
-              <p className="mt-2 text-xs font-medium text-slate-600">No channels found</p>
-              <button
-                type="button"
-                onClick={onOpenCreateRoom}
-                className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-500"
-              >
-                + Create this channel
-              </button>
+            <div className="p-4 text-center text-xs text-slate-400">
+              No channels found
             </div>
           ) : (
             filteredRooms.map((room) => {
               const isActive = room.id === activeRoomId
-              const RoomIcon = ICON_MAP[room.icon] || Hash
 
               return (
                 <button
@@ -156,69 +115,59 @@ export default function Sidebar({
                     onSelectRoom(room.id)
                     onClose()
                   }}
-                  className={`group relative flex w-full items-start gap-2.5 rounded-lg p-2.5 text-left transition-colors ${
+                  className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition-colors ${
                     isActive
-                      ? 'bg-white border border-slate-200 text-slate-900 shadow-2xs'
-                      : 'border border-transparent text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+                      ? 'bg-slate-200/80 font-semibold text-slate-900'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
-                  {/* Left Accent indicator for active */}
-                  {isActive && (
-                    <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-indigo-600" />
-                  )}
-
-                  {/* Icon */}
-                  <div
-                    className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition-colors ${
-                      isActive
-                        ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
-                        : 'border-slate-200 bg-white text-slate-400 group-hover:border-slate-300 group-hover:text-slate-600'
-                    }`}
-                  >
-                    <RoomIcon className="h-3.5 w-3.5" />
-                  </div>
-
-                  {/* Room Meta */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-1">
-                      <span
-                        className={`truncate text-xs font-semibold ${
-                          isActive ? 'text-slate-900' : 'text-slate-700 group-hover:text-slate-900'
-                        }`}
-                      >
-                        {room.name}
-                      </span>
-                      {room.topic && (
-                        <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.2 text-[9px] font-medium text-slate-500 border border-slate-200">
-                          {room.topic}
-                        </span>
-                      )}
-                    </div>
-
-                    {room.description && (
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-500">
-                        {room.description}
-                      </p>
-                    )}
-                  </div>
+                  <Hash className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  <span className="truncate">{room.name}</span>
                 </button>
               )
             })
           )}
         </div>
 
-        {/* Sidebar Footer Info */}
-        <div className="border-t border-slate-200 p-3 bg-white">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-600">
-            <div className="flex items-center justify-between font-medium text-slate-700">
-              <span>Real Time Sync</span>
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+        {/* User Profile Footer */}
+        {user && (
+          <div className="border-t border-slate-200 p-3 bg-white flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName}
+                  className="h-7 w-7 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full shrink-0 ${getAvatarGradient(
+                    user.uid || user.displayName
+                  )} text-xs font-semibold`}
+                >
+                  {getInitials(user.displayName)}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-slate-900 leading-tight">
+                  {user.displayName}
+                </p>
+                <p className="truncate text-[10px] text-slate-500">
+                  {user.email}
+                </p>
+              </div>
             </div>
-            <p className="mt-1 text-[11px] text-slate-500 leading-normal">
-              Firestore updates are distributed to all connected clients live.
-            </p>
+
+            <button
+              type="button"
+              onClick={signOutUser}
+              className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition shrink-0"
+              title="Sign Out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
-        </div>
+        )}
       </aside>
     </>
   )

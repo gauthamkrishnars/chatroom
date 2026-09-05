@@ -4,20 +4,17 @@ import { useAuth } from './context/useAuth'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import ChatArea from './components/ChatArea'
-import Footer from './components/Footer'
+import LoginPage from './components/LoginPage'
 import CreateRoomModal from './components/CreateRoomModal'
-import AuthModal from './components/AuthModal'
 import LegalModal from './components/LegalModal'
 import {
   subscribeToRooms,
   subscribeToRoomMessages,
   sendRoomMessage,
   createChatRoom,
-  toggleMessageReaction,
 } from './firebase/chatService'
 
-function MainChatApp() {
-  const { user } = useAuth()
+function ChatWorkspace({ user }) {
   const [rooms, setRooms] = useState([])
   const [roomsLoading, setRoomsLoading] = useState(true)
   const [activeRoomId, setActiveRoomId] = useState('general')
@@ -27,13 +24,9 @@ function MainChatApp() {
 
   // Mobile drawer state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
-
-  // Modals state
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false)
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
-  const [legalModalType, setLegalModalType] = useState(null) // 'terms' | 'privacy' | null
 
-  // Subscribe to rooms in real time
+  // Connect to Firestore rooms upon workspace mount
   useEffect(() => {
     const unsubscribe = subscribeToRooms(
       (newRooms) => {
@@ -55,7 +48,7 @@ function MainChatApp() {
     return () => unsubscribe()
   }, [])
 
-  // Subscribe to messages in real time for the active room
+  // Subscribe to room messages
   useEffect(() => {
     if (!activeRoomId) return
 
@@ -103,27 +96,18 @@ function MainChatApp() {
     }
   }
 
-  const handleReact = async (messageId, emoji) => {
-    await toggleMessageReaction({
-      roomId: activeRoomId,
-      messageId,
-      emoji,
-    })
-  }
-
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 selection:bg-indigo-100 selection:text-indigo-900 font-sans">
-      {/* Top Navigation */}
+    <div className="flex h-screen flex-col bg-white text-slate-900 font-sans overflow-hidden">
+      {/* Top Bar */}
       <Navbar
         activeRoom={activeRoom}
         onOpenMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
         isMobileSidebarOpen={isMobileSidebarOpen}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenCreateRoom={() => setIsCreateRoomOpen(true)}
       />
 
-      {/* Main App Workspace */}
-      <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 64px - 45px)' }}>
+      {/* Main Chat Layout */}
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <Sidebar
           rooms={rooms}
@@ -135,42 +119,66 @@ function MainChatApp() {
           roomsLoading={roomsLoading}
         />
 
-        {/* Real Time Chat Area */}
+        {/* Chat Feed */}
         <main className="flex flex-1 flex-col overflow-hidden">
           <ChatArea
             activeRoom={activeRoom}
             messages={messages}
             messagesLoading={messagesLoading}
             onSendMessage={handleSendMessage}
-            onReact={handleReact}
-            onOpenAuth={() => setIsAuthModalOpen(true)}
           />
         </main>
       </div>
 
-      {/* Footer */}
-      <Footer onOpenLegal={(type) => setLegalModalType(type)} />
-
-      {/* Create Room Modal */}
+      {/* Channel Creation Modal */}
       <CreateRoomModal
         isOpen={isCreateRoomOpen}
         onClose={() => setIsCreateRoomOpen(false)}
         onCreateRoom={handleCreateRoom}
       />
+    </div>
+  )
+}
 
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
+function MainChatApp() {
+  const { user, loading } = useAuth()
+  const [legalModalType, setLegalModalType] = useState(null)
 
-      {/* Legal Modal */}
+  // Initial Auth Loading Screen
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 text-xs">
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-5 w-5 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
+          <span>Loading workspace...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Gate: User must log in first before connecting to database
+  if (!user) {
+    return (
+      <>
+        <LoginPage onOpenLegal={(type) => setLegalModalType(type)} />
+        <LegalModal
+          type={legalModalType}
+          isOpen={Boolean(legalModalType)}
+          onClose={() => setLegalModalType(null)}
+        />
+      </>
+    )
+  }
+
+  return (
+    <>
+      <ChatWorkspace user={user} />
       <LegalModal
         type={legalModalType}
         isOpen={Boolean(legalModalType)}
         onClose={() => setLegalModalType(null)}
       />
-    </div>
+    </>
   )
 }
 

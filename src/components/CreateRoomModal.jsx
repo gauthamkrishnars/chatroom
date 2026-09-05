@@ -1,28 +1,5 @@
 import { useState } from 'react'
-import {
-  X,
-  MessageSquare,
-  Code,
-  Palette,
-  Sparkles,
-  Flame,
-  Coffee,
-  Terminal,
-  Compass,
-  Loader2,
-  Plus,
-} from 'lucide-react'
-
-const AVAILABLE_ICONS = [
-  { id: 'MessageSquare', label: 'Chat', icon: MessageSquare },
-  { id: 'Code', label: 'Code', icon: Code },
-  { id: 'Palette', label: 'Design', icon: Palette },
-  { id: 'Sparkles', label: 'Ideas', icon: Sparkles },
-  { id: 'Flame', label: 'Hot', icon: Flame },
-  { id: 'Coffee', label: 'Lounge', icon: Coffee },
-  { id: 'Terminal', label: 'Tech', icon: Terminal },
-  { id: 'Compass', label: 'Explore', icon: Compass },
-]
+import { X, Loader2 } from 'lucide-react'
 
 export default function CreateRoomModal({
   isOpen,
@@ -30,9 +7,7 @@ export default function CreateRoomModal({
   onCreateRoom,
 }) {
   const [name, setName] = useState('')
-  const [topic, setTopic] = useState('General')
   const [description, setDescription] = useState('')
-  const [icon, setIcon] = useState('MessageSquare')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -42,24 +17,27 @@ export default function CreateRoomModal({
     e.preventDefault()
     setError('')
 
-    const trimmedName = name.trim()
-    if (!trimmedName || trimmedName.length < 3) {
-      setError('Room name must be at least 3 characters.')
+    const formattedName = name
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-_]/g, '')
+
+    if (!formattedName || formattedName.length < 2) {
+      setError('Channel name must be at least 2 characters.')
       return
     }
 
     setSubmitting(true)
     try {
       await onCreateRoom({
-        name: trimmedName,
-        topic: topic.trim() || 'General',
+        name: formattedName,
         description: description.trim(),
-        icon,
+        topic: 'General',
+        icon: 'Hash',
       })
       setName('')
-      setTopic('General')
       setDescription('')
-      setIcon('MessageSquare')
       onClose()
     } catch (err) {
       setError(err.message || 'Failed to create channel.')
@@ -69,121 +47,70 @@ export default function CreateRoomModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-2xs">
       <div
-        className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-black/5"
+        className="relative w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          className="absolute right-4 top-4 text-slate-400 hover:text-slate-700"
         >
           <X className="h-4 w-4" />
         </button>
 
-        {/* Modal Title */}
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-800 border border-slate-200">
-            <Plus className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Create New Channel</h2>
-            <p className="text-xs text-slate-500">Add a dedicated channel for your team topic.</p>
-          </div>
-        </div>
+        <h2 className="text-sm font-bold text-slate-900">Create a channel</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Channels are where your team communicates on specific topics.
+        </p>
 
-        {/* Error Alert */}
         {error && (
-          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+          <div className="mt-3 rounded-md bg-rose-50 p-2 text-xs text-rose-700 border border-rose-200">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          {/* Room Name */}
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Channel Name <span className="text-indigo-600">*</span>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Name
             </label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Frontend Engineering"
-              maxLength={40}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
+            <div className="relative flex items-center">
+              <span className="absolute left-3 text-slate-400 text-xs font-semibold">#</span>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. plan-launch"
+                maxLength={40}
+                className="w-full rounded-lg border border-slate-200 py-2 pl-7 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
+              />
+            </div>
           </div>
 
-          {/* Topic Tag */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Category
-            </label>
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. Engineering, Design, Product"
-              maxLength={24}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Description
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Description <span className="font-normal text-slate-400">(optional)</span>
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this channel about?"
-              maxLength={140}
-              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              maxLength={120}
+              className="w-full resize-none rounded-lg border border-slate-200 p-2.5 text-xs text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
             />
           </div>
 
-          {/* Icon Picker */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-2">
-              Select Icon
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {AVAILABLE_ICONS.map((item) => {
-                const IconComp = item.icon
-                const isSelected = icon === item.id
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setIcon(item.id)}
-                    className={`flex flex-col items-center gap-1 rounded-xl border p-2 transition ${
-                      isSelected
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
-                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-100'
-                    }`}
-                  >
-                    <IconComp className="h-4 w-4" />
-                    <span className="text-[10px] font-medium">{item.label}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="mt-5 flex items-center justify-end gap-2.5 pt-2">
+          <div className="mt-4 flex items-center justify-end gap-2 pt-1">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="rounded-lg px-3.5 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 transition"
+              className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition"
             >
               Cancel
             </button>
@@ -191,7 +118,7 @@ export default function CreateRoomModal({
             <button
               type="submit"
               disabled={submitting || !name.trim()}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-slate-800 disabled:opacity-40 active:scale-95"
+              className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-40 transition"
             >
               {submitting ? (
                 <>
