@@ -15,115 +15,37 @@ import { db, isFirebaseConfigured } from './config'
 const DEFAULT_ROOMS = [
   {
     id: 'general',
-    name: 'General Chat',
-    description: 'Casual community discussions, introductions, and everyday banter.',
-    topic: 'Community',
+    name: 'General',
+    description: 'Team wide announcements, general discussions, and team updates.',
+    topic: 'General',
     icon: 'MessageSquare',
-    memberCount: 42,
   },
   {
-    id: 'tech-talk',
-    name: 'Tech & Code',
-    description: 'JavaScript, React, backend engines, architectures, and dev tools.',
-    topic: 'Development',
+    id: 'engineering',
+    name: 'Engineering',
+    description: 'Technical discussions, code architecture, deployments, and PR reviews.',
+    topic: 'Tech',
     icon: 'Code',
-    memberCount: 28,
   },
   {
-    id: 'design-critique',
-    name: 'Product Design',
-    description: 'UI typography, design systems, layouts, and interaction patterns.',
+    id: 'product-design',
+    name: 'Product & Design',
+    description: 'UI/UX mockups, user research, wireframes, and design systems.',
     topic: 'Design',
     icon: 'Palette',
-    memberCount: 19,
   },
   {
-    id: 'random-fun',
-    name: 'Random & Memes',
-    description: 'Off-topic chatter, funny clips, hobbies, music, and gaming.',
-    topic: 'Social',
+    id: 'announcements',
+    name: 'Announcements',
+    description: 'Company updates, releases, and key milestones.',
+    topic: 'Official',
     icon: 'Sparkles',
-    memberCount: 35,
   },
 ]
 
-const DEFAULT_MESSAGES = {
-  general: [
-    {
-      id: 'm1',
-      text: 'Welcome to PulseChat! This space is built with React and Firebase.',
-      userId: 'system-bot',
-      userName: 'System Bot',
-      userAvatar: '',
-      createdAt: new Date(Date.now() - 3600000 * 2),
-      reactions: { '🔥': 4, '👍': 7 },
-    },
-    {
-      id: 'm2',
-      text: 'Feel free to pick any chat room from the sidebar or create your own topic room.',
-      userId: 'sarah-connor',
-      userName: 'Sarah Jenkins',
-      userAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
-      createdAt: new Date(Date.now() - 3600000 * 1.5),
-      reactions: { '🚀': 3 },
-    },
-    {
-      id: 'm3',
-      text: 'Real time updates are synced live. Try opening this app in a second tab to see instant messaging!',
-      userId: 'marcus-vane',
-      userName: 'Marcus Vance',
-      userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-      createdAt: new Date(Date.now() - 1800000),
-      reactions: { '❤️': 5 },
-    },
-  ],
-  'tech-talk': [
-    {
-      id: 't1',
-      text: 'Anyone deploying Vite with Firebase Hosting lately? Fast build times make a huge difference.',
-      userId: 'elena-rostova',
-      userName: 'Elena Rostova',
-      userAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80',
-      createdAt: new Date(Date.now() - 5400000),
-      reactions: { '🔥': 2 },
-    },
-    {
-      id: 't2',
-      text: 'Yes! Sub 400ms bundling is standard with Vite. Plus Tailwind utility classes keep CSS bundles tiny.',
-      userId: 'dev-dave',
-      userName: 'David Miller',
-      userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-      createdAt: new Date(Date.now() - 2700000),
-      reactions: { '🚀': 4, '👍': 3 },
-    },
-  ],
-  'design-critique': [
-    {
-      id: 'd1',
-      text: 'Remember: high contrast palettes improve accessibility and give web apps a sharp, confident personality.',
-      userId: 'claire-design',
-      userName: 'Claire Dupont',
-      userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-      createdAt: new Date(Date.now() - 7200000),
-      reactions: { '✨': 6 },
-    },
-  ],
-  'random-fun': [
-    {
-      id: 'r1',
-      text: 'Weekend gaming tournament starts at 8 PM. Who is dropping in?',
-      userId: 'jake-streamer',
-      userName: 'Jake Sterling',
-      userAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&auto=format&fit=crop&q=80',
-      createdAt: new Date(Date.now() - 9000000),
-      reactions: { '🎮': 8 },
-    },
-  ],
-}
-
-// Local mock storage helpers for fallback mode
-const MOCK_STORAGE_KEY_ROOMS = 'pulsechat_mock_rooms_v1'
-const MOCK_STORAGE_KEY_MESSAGES = 'pulsechat_mock_messages_v1'
+// Local storage keys for offline/fallback caching
+const STORAGE_KEY_ROOMS = 'pulsechat_rooms'
+const STORAGE_KEY_MESSAGES = 'pulsechat_messages'
 let broadcastChannel = null
 
 try {
@@ -136,7 +58,7 @@ try {
 
 function getLocalRooms() {
   try {
-    const raw = localStorage.getItem(MOCK_STORAGE_KEY_ROOMS)
+    const raw = localStorage.getItem(STORAGE_KEY_ROOMS)
     if (raw) return JSON.parse(raw)
   } catch {
     // fallback
@@ -146,7 +68,7 @@ function getLocalRooms() {
 
 function saveLocalRooms(rooms) {
   try {
-    localStorage.setItem(MOCK_STORAGE_KEY_ROOMS, JSON.stringify(rooms))
+    localStorage.setItem(STORAGE_KEY_ROOMS, JSON.stringify(rooms))
     broadcastChannel?.postMessage({ type: 'ROOMS_UPDATED' })
   } catch {
     // ignore
@@ -155,17 +77,17 @@ function saveLocalRooms(rooms) {
 
 function getLocalMessages(roomId) {
   try {
-    const raw = localStorage.getItem(`${MOCK_STORAGE_KEY_MESSAGES}_${roomId}`)
+    const raw = localStorage.getItem(`${STORAGE_KEY_MESSAGES}_${roomId}`)
     if (raw) return JSON.parse(raw)
   } catch {
     // fallback
   }
-  return DEFAULT_MESSAGES[roomId] || []
+  return []
 }
 
 function saveLocalMessages(roomId, messages) {
   try {
-    localStorage.setItem(`${MOCK_STORAGE_KEY_MESSAGES}_${roomId}`, JSON.stringify(messages))
+    localStorage.setItem(`${STORAGE_KEY_MESSAGES}_${roomId}`, JSON.stringify(messages))
     broadcastChannel?.postMessage({ type: 'MESSAGES_UPDATED', roomId })
   } catch {
     // ignore
@@ -173,7 +95,7 @@ function saveLocalMessages(roomId, messages) {
 }
 
 /**
- * Seed initial rooms into Firestore if empty
+ * Seed initial clean rooms into Firestore if the database is newly initialized
  */
 export async function seedInitialFirestoreRooms() {
   if (!isFirebaseConfigured || !db) return
@@ -224,7 +146,7 @@ export function subscribeToRooms(onUpdate, onError) {
     }
   }
 
-  // Fallback demo storage mode
+  // Fallback local storage mode
   onUpdate(getLocalRooms())
 
   const handleBroadcast = (event) => {
@@ -234,7 +156,7 @@ export function subscribeToRooms(onUpdate, onError) {
   }
 
   const handleStorage = (e) => {
-    if (e.key === MOCK_STORAGE_KEY_ROOMS) {
+    if (e.key === STORAGE_KEY_ROOMS) {
       onUpdate(getLocalRooms())
     }
   }
@@ -263,10 +185,9 @@ export async function createChatRoom({ name, description, topic, icon, user }) {
       description: cleanDesc,
       topic: cleanTopic,
       icon: roomIcon,
-      memberCount: 1,
       createdBy: {
         uid: user?.uid || 'anonymous',
-        displayName: user?.displayName || 'Anonymous',
+        displayName: user?.displayName || 'User',
       },
       createdAt: serverTimestamp(),
     })
@@ -282,11 +203,10 @@ export async function createChatRoom({ name, description, topic, icon, user }) {
     description: cleanDesc,
     topic: cleanTopic,
     icon: roomIcon,
-    memberCount: 1,
     createdAt: new Date(),
     createdBy: {
-      uid: user?.uid || 'demo-user',
-      displayName: user?.displayName || 'Guest User',
+      uid: user?.uid || 'anonymous',
+      displayName: user?.displayName || 'User',
     },
   }
   const updatedRooms = [newRoom, ...rooms]
@@ -295,7 +215,7 @@ export async function createChatRoom({ name, description, topic, icon, user }) {
 }
 
 /**
- * Subscribe to real time messages for a specific room
+ * Subscribe to real time messages for a specific room (Zero fake messages)
  */
 export function subscribeToRoomMessages(roomId, onUpdate, onError) {
   if (!roomId) return () => {}
@@ -303,7 +223,7 @@ export function subscribeToRoomMessages(roomId, onUpdate, onError) {
   if (isFirebaseConfigured && db) {
     try {
       const messagesRef = collection(db, 'rooms', roomId, 'messages')
-      const q = query(messagesRef, orderBy('createdAt', 'asc'), limit(150))
+      const q = query(messagesRef, orderBy('createdAt', 'asc'), limit(200))
 
       return onSnapshot(
         q,
@@ -325,7 +245,7 @@ export function subscribeToRoomMessages(roomId, onUpdate, onError) {
     }
   }
 
-  // Fallback demo storage mode
+  // Fallback local storage mode
   onUpdate(getLocalMessages(roomId))
 
   const handleBroadcast = (event) => {
@@ -335,7 +255,7 @@ export function subscribeToRoomMessages(roomId, onUpdate, onError) {
   }
 
   const handleStorage = (e) => {
-    if (e.key === `${MOCK_STORAGE_KEY_MESSAGES}_${roomId}`) {
+    if (e.key === `${STORAGE_KEY_MESSAGES}_${roomId}`) {
       onUpdate(getLocalMessages(roomId))
     }
   }
@@ -350,15 +270,15 @@ export function subscribeToRoomMessages(roomId, onUpdate, onError) {
 }
 
 /**
- * Send a new message to a specific room
+ * Send a new message to a specific room from a real user
  */
 export async function sendRoomMessage({ roomId, text, user }) {
   if (!roomId || !text?.trim()) return
 
   const messagePayload = {
     text: text.trim(),
-    userId: user?.uid || 'guest-user',
-    userName: user?.displayName || 'Guest Explorer',
+    userId: user?.uid || 'anonymous-user',
+    userName: user?.displayName || 'Anonymous Member',
     userAvatar: user?.photoURL || '',
     userEmail: user?.email || '',
     reactions: {},
@@ -384,7 +304,7 @@ export async function sendRoomMessage({ roomId, text, user }) {
 }
 
 /**
- * Add or toggle an emoji reaction on a message
+ * Toggle an emoji reaction on a message
  */
 export async function toggleMessageReaction({ roomId, messageId, emoji }) {
   if (!roomId || !messageId || !emoji) return

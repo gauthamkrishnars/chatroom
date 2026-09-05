@@ -3,18 +3,18 @@
  */
 
 const AVATAR_PALETTES = [
-  'from-indigo-600 to-purple-600 text-white',
-  'from-emerald-600 to-teal-600 text-white',
-  'from-amber-500 to-orange-600 text-white',
-  'from-rose-600 to-pink-600 text-white',
-  'from-cyan-600 to-blue-600 text-white',
-  'from-fuchsia-600 to-rose-600 text-white',
-  'from-violet-600 to-indigo-600 text-white',
-  'from-teal-500 to-cyan-600 text-white',
+  'bg-indigo-600 text-white',
+  'bg-blue-600 text-white',
+  'bg-emerald-600 text-white',
+  'bg-amber-600 text-white',
+  'bg-rose-600 text-white',
+  'bg-violet-600 text-white',
+  'bg-teal-600 text-white',
+  'bg-slate-700 text-white',
 ]
 
 /**
- * Returns a stable color gradient based on a string seed (e.g. name or uid)
+ * Returns a stable color based on a string seed (e.g. name or uid)
  */
 export function getAvatarGradient(seed = '') {
   if (!seed) return AVATAR_PALETTES[0]

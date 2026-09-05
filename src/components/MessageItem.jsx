@@ -20,7 +20,7 @@ export default function MessageItem({
 
   return (
     <div
-      className={`group relative flex gap-3 px-4 py-2.5 transition-colors hover:bg-slate-900/40 sm:px-6 ${
+      className={`group relative flex gap-3 px-4 py-2 transition-colors hover:bg-slate-100/60 sm:px-6 ${
         isOwn ? 'flex-row-reverse' : 'flex-row'
       }`}
     >
@@ -30,13 +30,13 @@ export default function MessageItem({
           <img
             src={message.userAvatar}
             alt={message.userName}
-            className="h-8 w-8 sm:h-9 sm:w-9 rounded-full object-cover ring-1 ring-white/10"
+            className="h-8 w-8 sm:h-8.5 sm:w-8.5 rounded-full object-cover ring-1 ring-slate-200"
           />
         ) : (
           <div
-            className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-gradient-to-br ${getAvatarGradient(
+            className={`flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-full ${getAvatarGradient(
               message.userId || message.userName
-            )} text-xs font-bold ring-1 ring-white/10 shadow-md`}
+            )} text-xs font-bold shadow-xs`}
           >
             {getInitials(message.userName)}
           </div>
@@ -47,21 +47,21 @@ export default function MessageItem({
       <div className={`flex flex-col max-w-[85%] sm:max-w-[75%] ${isOwn ? 'items-end' : 'items-start'}`}>
         {/* Header: Name & Timestamp */}
         <div className={`flex items-center gap-2 mb-1 text-xs ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-          <span className="font-bold text-slate-200">{message.userName || 'Anonymous'}</span>
+          <span className="font-semibold text-slate-800">{message.userName || 'Member'}</span>
           {isOwn && (
-            <span className="rounded bg-indigo-500/20 px-1.5 py-0.2 text-[10px] font-semibold text-indigo-300 border border-indigo-500/30">
+            <span className="rounded bg-slate-100 px-1.5 py-0.2 text-[10px] font-medium text-slate-600 border border-slate-200">
               You
             </span>
           )}
-          <span className="text-[11px] text-slate-500">{formatTime(message.createdAt)}</span>
+          <span className="text-[11px] text-slate-400">{formatTime(message.createdAt)}</span>
         </div>
 
         {/* Text Bubble */}
         <div
-          className={`relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm transition-all ${
+          className={`relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed transition-all ${
             isOwn
-              ? 'rounded-tr-xs bg-indigo-600 text-white shadow-indigo-900/30 selection:bg-white selection:text-indigo-600'
-              : 'rounded-tl-xs border border-slate-800 bg-[#121522] text-slate-100 shadow-black/40'
+              ? 'rounded-tr-xs bg-slate-900 text-white shadow-xs'
+              : 'rounded-tl-xs border border-slate-200 bg-white text-slate-900 shadow-2xs'
           }`}
         >
           <p className="whitespace-pre-wrap break-words">{message.text}</p>
@@ -77,10 +77,10 @@ export default function MessageItem({
                   key={emoji}
                   type="button"
                   onClick={() => handleReact(emoji)}
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900/90 px-2 py-0.5 text-xs text-slate-300 transition hover:border-slate-700 hover:bg-slate-800"
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 shadow-2xs"
                 >
                   <span>{emoji}</span>
-                  <span className="text-[10px] font-bold text-slate-400">{count}</span>
+                  <span className="text-[10px] font-semibold text-slate-500">{count}</span>
                 </button>
               )
             })}
@@ -90,7 +90,7 @@ export default function MessageItem({
 
       {/* Floating Action Menu on Hover */}
       <div
-        className={`absolute top-1 hidden items-center gap-1 rounded-lg border border-slate-800 bg-slate-900/95 p-1 shadow-lg shadow-black/60 group-hover:flex z-10 ${
+        className={`absolute top-1 hidden items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-1 shadow-md group-hover:flex z-10 ${
           isOwn ? 'left-4' : 'right-4'
         }`}
       >
@@ -99,7 +99,7 @@ export default function MessageItem({
             key={emoji}
             type="button"
             onClick={() => handleReact(emoji)}
-            className="flex h-7 w-7 items-center justify-center rounded text-sm transition hover:bg-slate-800 active:scale-110"
+            className="flex h-6 w-6 items-center justify-center rounded text-xs transition hover:bg-slate-100 active:scale-110"
             title={`React with ${emoji}`}
           >
             {emoji}
@@ -108,20 +108,20 @@ export default function MessageItem({
         <button
           type="button"
           onClick={() => setShowPicker((p) => !p)}
-          className="flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-slate-800 hover:text-white"
+          className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           title="More reactions"
         >
-          <Smile className="h-3.5 w-3.5" />
+          <Smile className="h-3 w-3" />
         </button>
 
         {showPicker && (
-          <div className="absolute top-9 right-0 flex gap-1 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-xl ring-1 ring-white/10 z-20">
+          <div className="absolute top-8 right-0 flex gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg ring-1 ring-black/5 z-20">
             {QUICK_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
                 type="button"
                 onClick={() => handleReact(emoji)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-base hover:bg-slate-800"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-sm hover:bg-slate-100"
               >
                 {emoji}
               </button>

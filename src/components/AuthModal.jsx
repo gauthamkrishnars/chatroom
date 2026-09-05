@@ -9,7 +9,6 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  Zap,
 } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 
@@ -18,11 +17,9 @@ export default function AuthModal({ isOpen, onClose }) {
     signInWithGoogle,
     signInWithEmail,
     signUpWithEmail,
-    signInDemoUser,
     authActionLoading,
     authError,
     clearError,
-    isFirebaseConfigured,
   } = useAuth()
 
   const [mode, setMode] = useState('signin') // 'signin' or 'signup'
@@ -67,7 +64,7 @@ export default function AuthModal({ isOpen, onClose }) {
     try {
       if (mode === 'signup') {
         if (!displayName.trim()) {
-          setLocalError('Please provide a display name.')
+          setLocalError('Please provide your name.')
           return
         }
         await signUpWithEmail(email, password, displayName)
@@ -80,17 +77,12 @@ export default function AuthModal({ isOpen, onClose }) {
     }
   }
 
-  const handleQuickDemo = (name) => {
-    signInDemoUser(name)
-    onClose()
-  }
-
   const activeError = localError || authError
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="relative w-full max-w-md rounded-2xl border border-slate-800 bg-[#0f121d] p-6 shadow-2xl shadow-black/90 ring-1 ring-white/10"
+        className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-black/5"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
@@ -98,55 +90,42 @@ export default function AuthModal({ isOpen, onClose }) {
           type="button"
           onClick={onClose}
           disabled={authActionLoading}
-          className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+          className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </button>
 
         {/* Modal Header */}
         <div className="text-center">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-800 border border-slate-200">
             {mode === 'signin' ? <LogIn className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
           </div>
-          <h2 className="mt-3 text-lg font-bold text-white">
-            {mode === 'signin' ? 'Sign In to PulseChat' : 'Create Your Account'}
+          <h2 className="mt-3 text-base font-bold text-slate-900">
+            {mode === 'signin' ? 'Sign in to PulseChat' : 'Create an account'}
           </h2>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-slate-500">
             {mode === 'signin'
-              ? 'Join conversations and connect with channels in real time.'
-              : 'Pick your display name and hop into active rooms.'}
+              ? 'Enter your details below to access channels and conversations.'
+              : 'Join with your name and email to post verified messages.'}
           </p>
         </div>
 
-        {/* Firebase Config Notice if in preview */}
-        {!isFirebaseConfigured && (
-          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-left text-xs text-amber-200">
-            <div className="flex items-center gap-1.5 font-bold text-amber-300">
-              <Zap className="h-3.5 w-3.5" />
-              <span>Demo Mode Active</span>
-            </div>
-            <p className="mt-1 text-[11px] text-amber-200/90 leading-relaxed">
-              Firebase credentials are not set in <code className="rounded bg-amber-950/60 px-1 py-0.5 text-amber-300">.env</code>. You can test all features right now with instant demo accounts!
-            </p>
-          </div>
-        )}
-
         {/* Error Alert */}
         {activeError && (
-          <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-left text-xs text-rose-300">
+          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-left text-xs text-rose-700">
             {activeError}
           </div>
         )}
 
         {/* Tab switch */}
-        <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl border border-slate-800 bg-slate-900/80 p-1">
+        <div className="mt-5 grid grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1">
           <button
             type="button"
             onClick={() => switchMode('signin')}
-            className={`rounded-lg py-1.5 text-xs font-bold transition ${
+            className={`rounded-md py-1.5 text-xs font-semibold transition ${
               mode === 'signin'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Sign In
@@ -154,10 +133,10 @@ export default function AuthModal({ isOpen, onClose }) {
           <button
             type="button"
             onClick={() => switchMode('signup')}
-            className={`rounded-lg py-1.5 text-xs font-bold transition ${
+            className={`rounded-md py-1.5 text-xs font-semibold transition ${
               mode === 'signup'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Create Account
@@ -165,15 +144,15 @@ export default function AuthModal({ isOpen, onClose }) {
         </div>
 
         {/* Google OAuth Button */}
-        <div className="mt-5">
+        <div className="mt-4">
           <button
             type="button"
             onClick={handleGoogleAuth}
             disabled={authActionLoading}
-            className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-slate-700 bg-slate-900/90 px-4 py-2.5 text-xs font-bold text-slate-100 shadow-md transition hover:border-slate-600 hover:bg-slate-800 disabled:opacity-50 active:scale-95"
+            className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 active:scale-95"
           >
             {authActionLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
+              <Loader2 className="h-4 w-4 animate-spin text-slate-600" />
             ) : (
               <svg className="h-4 w-4" viewBox="0 0 24 24">
                 <path
@@ -200,8 +179,8 @@ export default function AuthModal({ isOpen, onClose }) {
 
         {/* Divider */}
         <div className="relative my-4 flex items-center justify-center">
-          <div className="w-full border-t border-slate-800" />
-          <span className="absolute bg-[#0f121d] px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+          <div className="w-full border-t border-slate-200" />
+          <span className="absolute bg-white px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
             or with email
           </span>
         </div>
@@ -210,57 +189,57 @@ export default function AuthModal({ isOpen, onClose }) {
         <form onSubmit={handleSubmit} className="space-y-3">
           {mode === 'signup' && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Display Name
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Full Name
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <User className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   required
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="e.g. Maya Lin"
+                  placeholder="Your Name"
                   maxLength={30}
-                  className="w-full rounded-xl border border-slate-800 bg-slate-900 py-2 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Email</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Mail className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
-                className="w-full rounded-xl border border-slate-800 bg-slate-900 py-2 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                placeholder="name@company.com"
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Lock className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 6 characters"
-                className="w-full rounded-xl border border-slate-800 bg-slate-900 py-2 pl-9 pr-9 text-xs text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-9 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((p) => !p)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               </button>
             </div>
           </div>
@@ -268,7 +247,7 @@ export default function AuthModal({ isOpen, onClose }) {
           <button
             type="submit"
             disabled={authActionLoading}
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:opacity-50 active:scale-95"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-xs font-semibold text-white shadow-xs transition hover:bg-slate-800 disabled:opacity-50 active:scale-95"
           >
             {authActionLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -277,31 +256,6 @@ export default function AuthModal({ isOpen, onClose }) {
             )}
           </button>
         </form>
-
-        {/* Quick Demo Test Profiles for instant evaluation */}
-        {!isFirebaseConfigured && (
-          <div className="mt-5 border-t border-slate-800/80 pt-4">
-            <span className="block text-center text-[11px] font-semibold text-slate-400 mb-2">
-              Quick test profiles:
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('Jordan Cole')}
-                className="rounded-lg border border-slate-800 bg-slate-900/60 px-2.5 py-1.5 text-xs text-slate-300 hover:border-indigo-500/50 hover:bg-slate-800"
-              >
-                Jordan Cole
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('Aria Stark')}
-                className="rounded-lg border border-slate-800 bg-slate-900/60 px-2.5 py-1.5 text-xs text-slate-300 hover:border-indigo-500/50 hover:bg-slate-800"
-              >
-                Aria Stark
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

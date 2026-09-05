@@ -56,23 +56,22 @@ export default function CreateRoomModal({
         description: description.trim(),
         icon,
       })
-      // Reset
       setName('')
       setTopic('General')
       setDescription('')
       setIcon('MessageSquare')
       onClose()
     } catch (err) {
-      setError(err.message || 'Failed to create room. Please try again.')
+      setError(err.message || 'Failed to create channel.')
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="relative w-full max-w-md rounded-2xl border border-slate-800 bg-[#0f121d] p-6 shadow-2xl shadow-black/80 ring-1 ring-white/10"
+        className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-black/5"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -80,25 +79,25 @@ export default function CreateRoomModal({
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+          className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </button>
 
         {/* Modal Title */}
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-800 border border-slate-200">
             <Plus className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white">Create New Chat Room</h2>
-            <p className="text-xs text-slate-400">Launch a real time room for your team or community.</p>
+            <h2 className="text-base font-bold text-slate-900">Create New Channel</h2>
+            <p className="text-xs text-slate-500">Add a dedicated channel for your team topic.</p>
           </div>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
             {error}
           </div>
         )}
@@ -106,39 +105,39 @@ export default function CreateRoomModal({
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {/* Room Name */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Room Name <span className="text-indigo-400">*</span>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Channel Name <span className="text-indigo-600">*</span>
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Frontend Engineers"
+              placeholder="e.g. Frontend Engineering"
               maxLength={40}
-              className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
 
           {/* Topic Tag */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Topic or Category
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Category
             </label>
             <input
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. Engineering, Design, Gaming"
+              placeholder="e.g. Engineering, Design, Product"
               maxLength={24}
-              className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Short Description
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Description
             </label>
             <textarea
               rows={2}
@@ -146,14 +145,14 @@ export default function CreateRoomModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this channel about?"
               maxLength={140}
-              className="w-full resize-none rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
 
           {/* Icon Picker */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-2">
-              Select Room Icon
+            <label className="block text-xs font-semibold text-slate-700 mb-2">
+              Select Icon
             </label>
             <div className="grid grid-cols-4 gap-2">
               {AVAILABLE_ICONS.map((item) => {
@@ -164,10 +163,10 @@ export default function CreateRoomModal({
                     key={item.id}
                     type="button"
                     onClick={() => setIcon(item.id)}
-                    className={`flex flex-col items-center gap-1 rounded-xl border p-2.5 transition ${
+                    className={`flex flex-col items-center gap-1 rounded-xl border p-2 transition ${
                       isSelected
-                        ? 'border-indigo-500 bg-indigo-600/20 text-indigo-300'
-                        : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
+                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-100'
                     }`}
                   >
                     <IconComp className="h-4 w-4" />
@@ -179,12 +178,12 @@ export default function CreateRoomModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-6 flex items-center justify-end gap-3 pt-2">
+          <div className="mt-5 flex items-center justify-end gap-2.5 pt-2">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition"
+              className="rounded-lg px-3.5 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 transition"
             >
               Cancel
             </button>
@@ -192,15 +191,15 @@ export default function CreateRoomModal({
             <button
               type="submit"
               disabled={submitting || !name.trim()}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:opacity-40 active:scale-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-slate-800 disabled:opacity-40 active:scale-95"
             >
               {submitting ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Creating Room...</span>
+                  <span>Creating...</span>
                 </>
               ) : (
-                <span>Create Room</span>
+                <span>Create Channel</span>
               )}
             </button>
           </div>

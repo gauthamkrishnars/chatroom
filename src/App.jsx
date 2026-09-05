@@ -39,7 +39,6 @@ function MainChatApp() {
       (newRooms) => {
         setRooms(newRooms)
         setRoomsLoading(false)
-        // If active room not set or no longer exists, select first room
         if (newRooms.length > 0) {
           setActiveRoomId((currentId) => {
             const exists = newRooms.some((r) => r.id === currentId)
@@ -75,10 +74,8 @@ function MainChatApp() {
     return () => unsubscribe()
   }, [activeRoomId])
 
-  // Get the active room object
   const activeRoom = rooms.find((r) => r.id === activeRoomId) || rooms[0]
 
-  // Handlers
   const handleSelectRoom = (roomId) => {
     if (roomId !== activeRoomId) {
       setMessagesLoading(true)
@@ -111,12 +108,11 @@ function MainChatApp() {
       roomId: activeRoomId,
       messageId,
       emoji,
-      user,
     })
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#08090e] text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200">
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 selection:bg-indigo-100 selection:text-indigo-900 font-sans">
       {/* Top Navigation */}
       <Navbar
         activeRoom={activeRoom}
@@ -127,7 +123,7 @@ function MainChatApp() {
       />
 
       {/* Main App Workspace */}
-      <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 64px - 53px)' }}>
+      <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 64px - 45px)' }}>
         {/* Sidebar */}
         <Sidebar
           rooms={rooms}
@@ -168,7 +164,7 @@ function MainChatApp() {
         onClose={() => setIsAuthModalOpen(false)}
       />
 
-      {/* Legal Modal (Terms of Service / Privacy Policy) */}
+      {/* Legal Modal */}
       <LegalModal
         type={legalModalType}
         isOpen={Boolean(legalModalType)}
