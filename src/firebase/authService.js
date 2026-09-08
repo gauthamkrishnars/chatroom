@@ -5,7 +5,7 @@ import {
   updateProfile,
   signOut,
 } from 'firebase/auth'
-import { auth, googleProvider, isFirebaseConfigured } from './config'
+import { auth, googleProvider, isFirebaseConfigured } from './config.js'
 
 /**
  * Sign in using Google OAuth Popup
@@ -26,6 +26,12 @@ export async function loginWithGoogle() {
     }
     if (error.code === 'auth/unauthorized-domain') {
       throw new Error('This domain is not authorized in Firebase Console. Add your hosting domain in Firebase Console under Authentication > Settings > Authorized Domains.')
+    }
+    if (error.code === 'auth/operation-not-allowed') {
+      throw new Error('Google Sign-In is not enabled for this project in Firebase Console. Please sign in with Email or continue as Guest.')
+    }
+    if (error.code === 'auth/network-request-failed') {
+      throw new Error('Network request failed. Please check your internet connection.')
     }
     throw new Error(error.message || 'Failed to sign in with Google.')
   }
@@ -56,6 +62,9 @@ export async function registerWithEmail(email, password, displayName) {
     if (error.code === 'auth/weak-password') {
       throw new Error('Password should be at least 6 characters long.')
     }
+    if (error.code === 'auth/network-request-failed') {
+      throw new Error('Network request failed. Please check your internet connection.')
+    }
     throw new Error(error.message || 'Failed to create account.')
   }
 }
@@ -80,6 +89,9 @@ export async function loginWithEmail(email, password) {
     }
     if (error.code === 'auth/too-many-requests') {
       throw new Error('Too many failed attempts. Please wait a minute and try again.')
+    }
+    if (error.code === 'auth/network-request-failed') {
+      throw new Error('Network request failed. Please check your internet connection.')
     }
     throw new Error(error.message || 'Failed to sign in.')
   }

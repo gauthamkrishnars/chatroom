@@ -26,14 +26,17 @@ export default function MessageInput({
     if (!trimmed || sending || disabled) return
 
     setSending(true)
+    const messageToSend = trimmed
+    setText('')
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+    }
+
     try {
-      await onSendMessage(trimmed)
-      setText('')
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto'
-      }
+      await onSendMessage(messageToSend)
     } catch (err) {
       console.error('Failed to send message:', err)
+      setText(messageToSend)
     } finally {
       setSending(false)
     }
@@ -41,6 +44,7 @@ export default function MessageInput({
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.nativeEvent?.isComposing) return
       e.preventDefault()
       handleSubmit()
     }

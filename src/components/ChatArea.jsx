@@ -7,6 +7,7 @@ export default function ChatArea({
   messages = [],
   messagesLoading = false,
   onSendMessage,
+  onToggleReaction,
 }) {
   const messagesEndRef = useRef(null)
 
@@ -26,6 +27,7 @@ export default function ChatArea({
           messages={messages}
           messagesLoading={messagesLoading}
           roomName={activeRoom?.name || 'general'}
+          onToggleReaction={onToggleReaction}
         />
         <div ref={messagesEndRef} />
       </div>

@@ -12,6 +12,7 @@ import {
   subscribeToRoomMessages,
   sendRoomMessage,
   createChatRoom,
+  toggleMessageReaction,
 } from './firebase/chatService'
 
 function ChatWorkspace({ user }) {
@@ -21,10 +22,28 @@ function ChatWorkspace({ user }) {
 
   const [messages, setMessages] = useState([])
   const [messagesLoading, setMessagesLoading] = useState(true)
+  const [firestoreNotice, setFirestoreNotice] = useState(false)
 
   // Mobile drawer state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false)
+
+  // Listen for firestore status updates
+  useEffect(() => {
+    const handleFirestoreStatus = (e) => {
+      if (e.detail && !e.detail.healthy) {
+        setFirestoreNotice(true)
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pulsechat_firestore_status', handleFirestoreStatus)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pulsechat_firestore_status', handleFirestoreStatus)
+      }
+    }
+  }, [])
 
   // Connect to Firestore rooms upon workspace mount
   useEffect(() => {
@@ -40,34 +59,41 @@ function ChatWorkspace({ user }) {
         }
       },
       (err) => {
-        console.error('Rooms subscription error:', err)
+        console.warn('Rooms subscription notice:', err?.message)
         setRoomsLoading(false)
+        if (err?.code === 'permission-denied') {
+          setFirestoreNotice(true)
+        }
       }
     )
 
     return () => unsubscribe()
   }, [])
 
+  const activeRoom = rooms.find((r) => r.id === activeRoomId) || rooms[0]
+  const currentRoomId = activeRoom?.id || activeRoomId || 'general'
+
   // Subscribe to room messages
   useEffect(() => {
-    if (!activeRoomId) return
+    if (!currentRoomId) return
 
     const unsubscribe = subscribeToRoomMessages(
-      activeRoomId,
+      currentRoomId,
       (newMessages) => {
         setMessages(newMessages)
         setMessagesLoading(false)
       },
       (err) => {
-        console.error('Messages subscription error:', err)
+        console.warn('Messages subscription notice:', err?.message)
         setMessagesLoading(false)
+        if (err?.code === 'permission-denied') {
+          setFirestoreNotice(true)
+        }
       }
     )
 
     return () => unsubscribe()
-  }, [activeRoomId])
-
-  const activeRoom = rooms.find((r) => r.id === activeRoomId) || rooms[0]
+  }, [currentRoomId])
 
   const handleSelectRoom = (roomId) => {
     if (roomId !== activeRoomId) {
@@ -77,10 +103,24 @@ function ChatWorkspace({ user }) {
   }
 
   const handleSendMessage = async (text) => {
-    await sendRoomMessage({
-      roomId: activeRoomId,
+    const sentMsg = await sendRoomMessage({
+      roomId: currentRoomId,
       text,
       user,
+    })
+    if (sentMsg) {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === sentMsg.id)) return prev
+        return [...prev, sentMsg]
+      })
+    }
+  }
+
+  const handleToggleReaction = async (messageId, emoji) => {
+    await toggleMessageReaction({
+      roomId: currentRoomId,
+      messageId,
+      emoji,
     })
   }
 
@@ -98,6 +138,27 @@ function ChatWorkspace({ user }) {
 
   return (
     <div className="flex h-screen flex-col bg-white text-slate-900 font-sans overflow-hidden">
+      {/* Cloud Sync Notice (if remote Firestore rules are locked) */}
+      {firestoreNotice && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 text-[11px] text-amber-800 flex items-center justify-between gap-2 z-50">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+            <span className="font-semibold">Local Multi-Tab Sync Active:</span>
+            <span>
+              Messages sync instantly across browser tabs. To enable cloud database persistence, deploy <code className="bg-amber-100 px-1 py-0.2 rounded font-mono">firestore.rules</code> in your Firebase Console.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFirestoreNotice(false)}
+            className="text-amber-700 hover:text-amber-900 font-bold px-1.5 cursor-pointer shrink-0"
+            title="Dismiss notice"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
       {/* Top Bar */}
       <Navbar
         activeRoom={activeRoom}
@@ -126,6 +187,7 @@ function ChatWorkspace({ user }) {
             messages={messages}
             messagesLoading={messagesLoading}
             onSendMessage={handleSendMessage}
+            onToggleReaction={handleToggleReaction}
           />
         </main>
       </div>

@@ -7,6 +7,7 @@ export default function LoginPage({ onOpenLegal }) {
     signInWithGoogle,
     signInWithEmail,
     signUpWithEmail,
+    signInAsGuest,
     authActionLoading,
     authError,
     clearError,
@@ -233,6 +234,18 @@ export default function LoginPage({ onOpenLegal }) {
                 </button>
               </p>
             )}
+          </div>
+
+          {/* Quick Guest Access */}
+          <div className="mt-5 pt-4 border-t border-slate-100 text-center">
+            <button
+              type="button"
+              onClick={() => signInAsGuest('Demo Member')}
+              disabled={authActionLoading}
+              className="w-full py-2 px-3 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition border border-dashed border-slate-300 cursor-pointer"
+            >
+              Continue as Guest (Instant Access)
+            </button>
           </div>
         </div>
       </div>

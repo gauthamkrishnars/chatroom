@@ -10,7 +10,7 @@ import {
   doc,
   setDoc,
 } from 'firebase/firestore'
-import { db, isFirebaseConfigured } from './config'
+import { db, isFirebaseConfigured } from './config.js'
 
 const DEFAULT_ROOMS = [
   {
@@ -46,8 +46,20 @@ const DEFAULT_ROOMS = [
 // Local storage keys for offline/fallback caching
 const STORAGE_KEY_ROOMS = 'pulsechat_rooms'
 const STORAGE_KEY_MESSAGES = 'pulsechat_messages'
-let broadcastChannel = null
 
+// Track whether Firestore is currently healthy and accessible
+let isFirestoreHealthy = true
+
+function withTimeout(promise, ms = 2500) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore operation timed out')), ms)
+    ),
+  ])
+}
+
+let broadcastChannel = null
 try {
   if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
     broadcastChannel = new BroadcastChannel('pulsechat_sync')
@@ -56,61 +68,113 @@ try {
   // BroadcastChannel unavailable
 }
 
-function getLocalRooms() {
+// Notification helpers that notify both other tabs and current window
+function notifyRoomsUpdated() {
+  try {
+    broadcastChannel?.postMessage({ type: 'ROOMS_UPDATED' })
+  } catch {}
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pulsechat_local_rooms_updated'))
+  }
+}
+
+function notifyMessagesUpdated(roomId) {
+  try {
+    broadcastChannel?.postMessage({ type: 'MESSAGES_UPDATED', roomId })
+  } catch {}
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('pulsechat_local_messages_updated', { detail: { roomId } })
+    )
+  }
+}
+
+export function notifyFirestoreStatus(healthy, reason = '') {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('pulsechat_firestore_status', {
+        detail: { healthy, reason },
+      })
+    )
+  }
+}
+
+export function getLocalRooms() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ROOMS)
-    if (raw) return JSON.parse(raw)
-  } catch {
-    // fallback
-  }
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Ensure all default rooms remain present alongside user created channels
+        const map = new Map()
+        DEFAULT_ROOMS.forEach((r) => map.set(r.id, r))
+        parsed.forEach((r) => {
+          if (r && r.id) {
+            map.set(r.id, { ...(map.get(r.id) || {}), ...r })
+          }
+        })
+        return Array.from(map.values())
+      }
+    }
+  } catch {}
   return DEFAULT_ROOMS
 }
 
-function saveLocalRooms(rooms) {
+export function saveLocalRooms(rooms, shouldNotify = true) {
   try {
     localStorage.setItem(STORAGE_KEY_ROOMS, JSON.stringify(rooms))
-    broadcastChannel?.postMessage({ type: 'ROOMS_UPDATED' })
-  } catch {
-    // ignore
-  }
+    if (shouldNotify) {
+      notifyRoomsUpdated()
+    }
+  } catch {}
 }
 
-function getLocalMessages(roomId) {
+export function getLocalMessages(roomId) {
+  if (!roomId) return []
   try {
     const raw = localStorage.getItem(`${STORAGE_KEY_MESSAGES}_${roomId}`)
-    if (raw) return JSON.parse(raw)
-  } catch {
-    // fallback
-  }
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed
+    }
+  } catch {}
   return []
 }
 
-function saveLocalMessages(roomId, messages) {
+export function saveLocalMessages(roomId, messages, shouldNotify = true) {
+  if (!roomId) return
   try {
     localStorage.setItem(`${STORAGE_KEY_MESSAGES}_${roomId}`, JSON.stringify(messages))
-    broadcastChannel?.postMessage({ type: 'MESSAGES_UPDATED', roomId })
-  } catch {
-    // ignore
-  }
+    if (shouldNotify) {
+      notifyMessagesUpdated(roomId)
+    }
+  } catch {}
 }
 
 /**
  * Seed initial clean rooms into Firestore if the database is newly initialized
  */
 export async function seedInitialFirestoreRooms() {
-  if (!isFirebaseConfigured || !db) return
+  if (!isFirebaseConfigured || !db || !isFirestoreHealthy) return
   try {
-    const roomsSnap = await getDocs(collection(db, 'rooms'))
+    const roomsSnap = await withTimeout(getDocs(collection(db, 'rooms')), 2500)
     if (roomsSnap.empty) {
       for (const room of DEFAULT_ROOMS) {
-        await addDoc(collection(db, 'rooms'), {
-          ...room,
-          createdAt: serverTimestamp(),
-        })
+        await withTimeout(
+          setDoc(doc(db, 'rooms', room.id), {
+            ...room,
+            createdAt: serverTimestamp(),
+          }),
+          2500
+        )
       }
     }
   } catch (error) {
-    console.warn('Could not auto-seed rooms:', error.message)
+    console.warn('Could not auto-seed rooms in Firestore:', error.message)
+    if (error?.code === 'permission-denied') {
+      isFirestoreHealthy = false
+      notifyFirestoreStatus(false, 'permission-denied')
+    }
   }
 }
 
@@ -118,36 +182,12 @@ export async function seedInitialFirestoreRooms() {
  * Subscribe to real time rooms list
  */
 export function subscribeToRooms(onUpdate, onError) {
-  if (isFirebaseConfigured && db) {
-    try {
-      const q = query(collection(db, 'rooms'))
-      return onSnapshot(
-        q,
-        (snapshot) => {
-          if (snapshot.empty) {
-            seedInitialFirestoreRooms()
-            onUpdate(DEFAULT_ROOMS)
-            return
-          }
-          const rooms = snapshot.docs.map((docSnap) => ({
-            id: docSnap.id,
-            ...docSnap.data(),
-          }))
-          onUpdate(rooms)
-        },
-        (error) => {
-          console.error('Rooms subscription error:', error)
-          if (onError) onError(error)
-          onUpdate(getLocalRooms())
-        }
-      )
-    } catch (err) {
-      console.warn('Firestore room query failed, using local storage:', err)
-    }
-  }
-
-  // Fallback local storage mode
+  // Always emit local / cached rooms immediately so UI is never blank
   onUpdate(getLocalRooms())
+
+  const handleLocalRoomsEvent = () => {
+    onUpdate(getLocalRooms())
+  }
 
   const handleBroadcast = (event) => {
     if (event.data?.type === 'ROOMS_UPDATED') {
@@ -162,11 +202,65 @@ export function subscribeToRooms(onUpdate, onError) {
   }
 
   broadcastChannel?.addEventListener('message', handleBroadcast)
-  window.addEventListener('storage', handleStorage)
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener('pulsechat_local_rooms_updated', handleLocalRoomsEvent)
+  }
+
+  let unsubscribeFirestore = null
+
+  if (isFirebaseConfigured && db && isFirestoreHealthy) {
+    try {
+      const q = query(collection(db, 'rooms'))
+      unsubscribeFirestore = onSnapshot(
+        q,
+        (snapshot) => {
+          if (snapshot.empty) {
+            seedInitialFirestoreRooms()
+            onUpdate(DEFAULT_ROOMS)
+            return
+          }
+          const remoteRooms = snapshot.docs.map((docSnap) => ({
+            ...docSnap.data(),
+            id: docSnap.id,
+          }))
+          // Merge with default rooms and deduplicate
+          const map = new Map()
+          DEFAULT_ROOMS.forEach((r) => map.set(r.id, r))
+          remoteRooms.forEach((r) => {
+            if (r && r.id) map.set(r.id, { ...(map.get(r.id) || {}), ...r })
+          })
+          const mergedRooms = Array.from(map.values())
+          saveLocalRooms(mergedRooms, false)
+          onUpdate(mergedRooms)
+        },
+        (error) => {
+          console.warn('Firestore rooms query unavailable, using local rooms:', error.message)
+          if (error?.code === 'permission-denied') {
+            isFirestoreHealthy = false
+            notifyFirestoreStatus(false, 'permission-denied')
+          }
+          if (onError) onError(error)
+          onUpdate(getLocalRooms())
+        }
+      )
+    } catch (err) {
+      console.warn('Firestore room query setup failed, using local rooms:', err)
+      if (onError) onError(err)
+    }
+  }
 
   return () => {
+    if (unsubscribeFirestore) {
+      try {
+        unsubscribeFirestore()
+      } catch {}
+    }
     broadcastChannel?.removeEventListener('message', handleBroadcast)
-    window.removeEventListener('storage', handleStorage)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener('pulsechat_local_rooms_updated', handleLocalRoomsEvent)
+    }
   }
 }
 
@@ -174,79 +268,73 @@ export function subscribeToRooms(onUpdate, onError) {
  * Create a new chat room
  */
 export async function createChatRoom({ name, description, topic, icon, user }) {
-  const cleanName = name.trim()
+  const cleanName = (name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-_]/g, '')
   const cleanTopic = (topic || 'General').trim()
   const cleanDesc = (description || '').trim()
-  const roomIcon = icon || 'MessageSquare'
+  const roomIcon = icon || 'Hash'
 
-  if (isFirebaseConfigured && db) {
-    const docRef = await addDoc(collection(db, 'rooms'), {
-      name: cleanName,
-      description: cleanDesc,
-      topic: cleanTopic,
-      icon: roomIcon,
-      createdBy: {
-        uid: user?.uid || 'anonymous',
-        displayName: user?.displayName || 'User',
-      },
-      createdAt: serverTimestamp(),
-    })
-    return docRef.id
-  }
-
-  // Local fallback
-  const rooms = getLocalRooms()
-  const newRoomId = 'room_' + Date.now().toString(36)
-  const newRoom = {
-    id: newRoomId,
+  const roomData = {
     name: cleanName,
     description: cleanDesc,
     topic: cleanTopic,
     icon: roomIcon,
-    createdAt: new Date(),
     createdBy: {
       uid: user?.uid || 'anonymous',
       displayName: user?.displayName || 'User',
     },
+    createdAt: new Date().toISOString(),
   }
-  const updatedRooms = [newRoom, ...rooms]
-  saveLocalRooms(updatedRooms)
-  return newRoomId
+
+  // 1. Instantly save locally (optimistic)
+  const localRoomId = cleanName || 'room_' + Date.now().toString(36)
+  const newRoom = {
+    id: localRoomId,
+    ...roomData,
+  }
+  const currentRooms = getLocalRooms()
+  saveLocalRooms([newRoom, ...currentRooms.filter((r) => r.id !== localRoomId)], true)
+
+  // 2. In background, attempt cloud sync if Firestore is healthy
+  if (isFirebaseConfigured && db && isFirestoreHealthy) {
+    withTimeout(
+      setDoc(doc(db, 'rooms', localRoomId), {
+        ...roomData,
+        createdAt: serverTimestamp(),
+      }),
+      2500
+    ).catch((err) => {
+      console.warn(
+        '[ChatService] Firestore room write failed or timed out, continuing on local storage:',
+        err.message
+      )
+      if (err?.code === 'permission-denied') {
+        isFirestoreHealthy = false
+        notifyFirestoreStatus(false, 'permission-denied')
+      }
+    })
+  }
+
+  return localRoomId
 }
 
 /**
- * Subscribe to real time messages for a specific room (Zero fake messages)
+ * Subscribe to real time messages for a specific room
  */
 export function subscribeToRoomMessages(roomId, onUpdate, onError) {
   if (!roomId) return () => {}
 
-  if (isFirebaseConfigured && db) {
-    try {
-      const messagesRef = collection(db, 'rooms', roomId, 'messages')
-      const q = query(messagesRef, orderBy('createdAt', 'asc'), limit(200))
+  // Immediately load cached messages
+  onUpdate(getLocalMessages(roomId))
 
-      return onSnapshot(
-        q,
-        (snapshot) => {
-          const messages = snapshot.docs.map((docSnap) => ({
-            id: docSnap.id,
-            ...docSnap.data(),
-          }))
-          onUpdate(messages)
-        },
-        (error) => {
-          console.error(`Messages snapshot error for room ${roomId}:`, error)
-          if (onError) onError(error)
-          onUpdate(getLocalMessages(roomId))
-        }
-      )
-    } catch (err) {
-      console.warn('Firestore message query failed, using local storage:', err)
+  const handleLocalMessagesEvent = (e) => {
+    if (!e.detail || e.detail.roomId === roomId) {
+      onUpdate(getLocalMessages(roomId))
     }
   }
-
-  // Fallback local storage mode
-  onUpdate(getLocalMessages(roomId))
 
   const handleBroadcast = (event) => {
     if (event.data?.type === 'MESSAGES_UPDATED' && event.data.roomId === roomId) {
@@ -261,46 +349,124 @@ export function subscribeToRoomMessages(roomId, onUpdate, onError) {
   }
 
   broadcastChannel?.addEventListener('message', handleBroadcast)
-  window.addEventListener('storage', handleStorage)
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener('pulsechat_local_messages_updated', handleLocalMessagesEvent)
+  }
+
+  let unsubscribeFirestore = null
+
+  if (isFirebaseConfigured && db && isFirestoreHealthy) {
+    try {
+      const messagesRef = collection(db, 'rooms', roomId, 'messages')
+      const q = query(messagesRef, orderBy('createdAt', 'asc'), limit(200))
+
+      unsubscribeFirestore = onSnapshot(
+        q,
+        (snapshot) => {
+          const remoteMessages = snapshot.docs.map((docSnap) => ({
+            ...docSnap.data(),
+            id: docSnap.id,
+          }))
+          saveLocalMessages(roomId, remoteMessages, false)
+          onUpdate(remoteMessages)
+        },
+        (error) => {
+          console.warn(`Firestore messages snapshot notice for room ${roomId}:`, error.message)
+          if (error?.code === 'permission-denied') {
+            isFirestoreHealthy = false
+            notifyFirestoreStatus(false, 'permission-denied')
+          }
+          if (onError) onError(error)
+          onUpdate(getLocalMessages(roomId))
+        }
+      )
+    } catch (err) {
+      console.warn('Firestore message query setup failed, using local storage:', err)
+      if (onError) onError(err)
+    }
+  }
 
   return () => {
+    if (unsubscribeFirestore) {
+      try {
+        unsubscribeFirestore()
+      } catch {}
+    }
     broadcastChannel?.removeEventListener('message', handleBroadcast)
-    window.removeEventListener('storage', handleStorage)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener('pulsechat_local_messages_updated', handleLocalMessagesEvent)
+    }
   }
 }
 
 /**
- * Send a new message to a specific room from a real user
+ * Send a new message to a specific room
  */
 export async function sendRoomMessage({ roomId, text, user }) {
-  if (!roomId || !text?.trim()) return
+  if (!roomId || !text?.trim()) return null
+
+  const trimmedText = text.trim()
+  const nowIso = new Date().toISOString()
+  const localMsgId =
+    'msg_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 7)
 
   const messagePayload = {
-    text: text.trim(),
+    text: trimmedText,
     userId: user?.uid || 'anonymous-user',
     userName: user?.displayName || 'Anonymous Member',
     userAvatar: user?.photoURL || '',
     userEmail: user?.email || '',
     reactions: {},
+    createdAt: nowIso,
   }
 
-  if (isFirebaseConfigured && db) {
-    const messagesRef = collection(db, 'rooms', roomId, 'messages')
-    return await addDoc(messagesRef, {
-      ...messagePayload,
-      createdAt: serverTimestamp(),
-    })
-  }
-
-  // Local fallback
-  const currentMessages = getLocalMessages(roomId)
-  const newMsg = {
-    id: 'msg_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+  const localMsg = {
+    id: localMsgId,
     ...messagePayload,
-    createdAt: new Date(),
   }
-  saveLocalMessages(roomId, [...currentMessages, newMsg])
-  return newMsg
+
+  // 1. Optimistic local delivery: Save instantly & notify listeners
+  const currentMessages = getLocalMessages(roomId)
+  const updatedMessages = [
+    ...currentMessages.filter((m) => m.id !== localMsgId),
+    localMsg,
+  ]
+  saveLocalMessages(roomId, updatedMessages, true)
+
+  // 2. In background, attempt cloud sync if Firestore is configured & healthy
+  if (isFirebaseConfigured && db && isFirestoreHealthy) {
+    const messagesRef = collection(db, 'rooms', roomId, 'messages')
+    withTimeout(
+      addDoc(messagesRef, {
+        ...messagePayload,
+        createdAt: serverTimestamp(),
+      }),
+      2500
+    )
+      .then((docRef) => {
+        // Map local temporary ID to remote Firestore document ID
+        const msgs = getLocalMessages(roomId)
+        const mapped = msgs.map((m) =>
+          m.id === localMsgId ? { ...m, id: docRef.id } : m
+        )
+        saveLocalMessages(roomId, mapped, false)
+      })
+      .catch((err) => {
+        console.warn(
+          '[ChatService] Firestore message send failed or timed out, syncing locally:',
+          err.message
+        )
+        if (err?.code === 'permission-denied') {
+          isFirestoreHealthy = false
+          notifyFirestoreStatus(false, 'permission-denied')
+        }
+      })
+  }
+
+  // Return the sent message immediately so the UI is 100% responsive
+  return localMsg
 }
 
 /**
@@ -309,24 +475,7 @@ export async function sendRoomMessage({ roomId, text, user }) {
 export async function toggleMessageReaction({ roomId, messageId, emoji }) {
   if (!roomId || !messageId || !emoji) return
 
-  if (isFirebaseConfigured && db) {
-    try {
-      const msgDocRef = doc(db, 'rooms', roomId, 'messages', messageId)
-      await setDoc(
-        msgDocRef,
-        {
-          reactions: {
-            [emoji]: 1,
-          },
-        },
-        { merge: true }
-      )
-    } catch (err) {
-      console.warn('Reaction update error:', err)
-    }
-  }
-
-  // Local fallback
+  // 1. Instantly update locally
   const messages = getLocalMessages(roomId)
   const updated = messages.map((m) => {
     if (m.id === messageId) {
@@ -337,5 +486,28 @@ export async function toggleMessageReaction({ roomId, messageId, emoji }) {
     }
     return m
   })
-  saveLocalMessages(roomId, updated)
+  saveLocalMessages(roomId, updated, true)
+
+  // 2. In background, sync to Firestore if healthy
+  if (isFirebaseConfigured && db && isFirestoreHealthy) {
+    try {
+      const msgDocRef = doc(db, 'rooms', roomId, 'messages', messageId)
+      withTimeout(
+        setDoc(
+          msgDocRef,
+          {
+            reactions: {
+              [emoji]: 1,
+            },
+          },
+          { merge: true }
+        ),
+        2500
+      ).catch((err) => {
+        console.warn('Reaction update error:', err.message)
+      })
+    } catch (err) {
+      console.warn('Reaction setup error:', err.message)
+    }
+  }
 }

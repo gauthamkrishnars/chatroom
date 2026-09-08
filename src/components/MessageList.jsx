@@ -7,10 +7,11 @@ export default function MessageList({
   messages = [],
   messagesLoading,
   roomName = 'general',
+  onToggleReaction,
 }) {
   if (messagesLoading) {
     return (
-      <div className="flex-1 space-y-4 p-4 overflow-y-auto">
+      <div className="flex-1 space-y-4 p-4">
         {[1, 2, 3].map((n) => (
           <div key={n} className="flex gap-3">
             <div className="h-8 w-8 rounded-md bg-slate-200 animate-pulse shrink-0" />
@@ -41,7 +42,7 @@ export default function MessageList({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto py-2">
+    <div className="flex-1 py-2">
       {messages.map((message, index) => {
         const currentDateHeader = formatDateHeader(message.createdAt)
         const previousDateHeader =
@@ -49,7 +50,7 @@ export default function MessageList({
         const showDateSeparator = currentDateHeader !== previousDateHeader
 
         return (
-          <Fragment key={message.id}>
+          <Fragment key={message.id || `msg-${index}`}>
             {showDateSeparator && (
               <div className="relative my-3 flex items-center justify-center">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -60,7 +61,10 @@ export default function MessageList({
                 </div>
               </div>
             )}
-            <MessageItem message={message} />
+            <MessageItem
+              message={message}
+              onToggleReaction={onToggleReaction}
+            />
           </Fragment>
         )
       })}
