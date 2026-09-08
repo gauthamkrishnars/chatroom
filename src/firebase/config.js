@@ -3,14 +3,17 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getAnalytics, isSupported } from 'firebase/analytics'
 
+const clean = (val) =>
+  typeof val === 'string' ? val.trim().replace(/^['"]|['"]$/g, '') : val
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  apiKey: clean(import.meta.env.VITE_FIREBASE_API_KEY),
+  authDomain: clean(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+  projectId: clean(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket: clean(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: clean(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId: clean(import.meta.env.VITE_FIREBASE_APP_ID),
+  measurementId: clean(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID),
 }
 
 // Check if Firebase environment variables are provided and not dummy placeholders
@@ -20,6 +23,13 @@ export const isFirebaseConfigured = Boolean(
   firebaseConfig.projectId &&
   firebaseConfig.projectId !== 'your_project_id'
 )
+
+if (!isFirebaseConfigured && typeof window !== 'undefined') {
+  console.warn(
+    '[Firebase Config] Environment variables not detected. If you recently edited .env, please restart your Vite dev server (Ctrl+C then npm run dev).'
+  )
+}
+
 
 let app = null
 let auth = null
