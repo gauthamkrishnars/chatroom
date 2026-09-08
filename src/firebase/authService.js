@@ -24,6 +24,9 @@ export async function loginWithGoogle() {
     if (error.code === 'auth/cancelled-popup-request') {
       throw new Error('Multiple popups opened. Try again.')
     }
+    if (error.code === 'auth/unauthorized-domain') {
+      throw new Error('This domain is not authorized in Firebase Console. Add your hosting domain in Firebase Console under Authentication > Settings > Authorized Domains.')
+    }
     throw new Error(error.message || 'Failed to sign in with Google.')
   }
 }
